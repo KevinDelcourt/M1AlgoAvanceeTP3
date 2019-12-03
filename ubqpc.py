@@ -2,19 +2,20 @@ from ubqp import *
 
 
 class ProblemUBQPC(ProblemUBQP):
-    def init_solutions_from_file(self, raw):
-        reader = csv.reader(raw)
-        self.solutions = []
-        for row in reader:
-            self.solutions.append(SolutionUBQPC(list(map(int, row)), self.p))
-        self.solutions_acceptables = [
-            x for x in self.solutions if x.acceptable()]
+    def get_random_solutions(self, sample_size=1):
+        solutions = []
+        vec = []
+        for _ in range(0, sample_size):
+            while True:
+                vec = []
+                for _ in range(0, self.n):
+                    vec.append(random.randint(0, 1))
+                if vec not in solutions and sum(vec) >= self.p:
+                    break
+            solutions.append(vec)
+        return [SolutionUBQPC(self, x) for x in solutions]
 
 
 class SolutionUBQPC(SolutionUBQP):
-    def __init__(self, args, p):
-        SolutionUBQP.__init__(self, args)
-        self.problem_p = p
-
     def acceptable(self):
-        return self.p >= self.problem_p
+        return sum(self.vec) >= self.problem.p

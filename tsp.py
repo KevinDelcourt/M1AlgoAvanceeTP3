@@ -1,6 +1,8 @@
 from utils.problem import *
-import itertools
 import math
+import itertools
+import random
+import matplotlib.pyplot as plt
 
 
 class ProblemTSP(Problem):
@@ -13,62 +15,76 @@ class ProblemTSP(Problem):
             self.villes.append(ville)
 
     def __repr__(self):
-        return "\n============\nTSP %s\nn = %d\n============\n" % (self.name, self.n)
+        return "TSP %s => n = %d" % (self.name, self.n)
 
     def compute_all_solutions(self):
         id_sol = 0
         solutions = []
-        possible_permutations = list(itertools.permutations(self.villes))
-        for sol in possible_permutations:
-            single_sol = [id_sol, self.compute_valeur(
+        for sol in list(itertools.permutations(self.villes)):
+            single_sol = [id_sol, self.compute_val(
                 list(sol))] + [x.id for x in sol]
             solutions.append(single_sol)
             id_sol += 1
-            if id_sol % math.trunc(len(possible_permutations)/100) == 0:
-                print(id_sol)
         return solutions
 
-    def compute_valeur(self, sol):
+    def compute_val(self, vec):
         ville0 = Ville(0, 0, 0)
-        val = ville0.distance_from(sol[0]) + sol[-1].distance_from(ville0)
-        for i in range(0, len(sol)-1):
-            val += sol[i].distance_from(sol[i+1])
+        val = ville0.distance_from(vec[0]) + vec[-1].distance_from(ville0)
+        for i in range(0, len(vec)-1):
+            val += vec[i].distance_from(vec[i+1])
         return val
 
-    def init_solutions_from_file(self, raw):
-        reader = csv.reader(raw)
-        self.solutions = []
-        for row in reader:
-            self.solutions.append(SolutionTSP(list(row), self))
-        print(self.solutions[0].get_voisins_ids())
-        self.solutions_acceptables = self.solutions
+    def get_random_solutions(self, sample_size=1):
+        solutions = []
+        vec = []
+        for _ in range(0, sample_size):
+            while True:
+                vec = random.sample(range(0, self.n), self.n)
+                if vec not in solutions:
+                    break
+            solutions.append(vec)
+
+        return [SolutionTSP(self, [self.villes[y] for y in x]) for x in solutions]
+
+    def get_greedy_start_vec(self):
+        ville0 = Ville(0, 0, 0)
+        villes = self.villes.copy()
+        solution = [villes.pop(ville0.get_id_of_closest(villes))]
+        while len(villes) > 0:
+            solution.append(villes.pop(solution[-1].get_id_of_closest(villes)))
+        return solution
 
 
 class SolutionTSP(Solution):
-    def __init__(self, args, problem):
-        self.id = int(args.pop(0))
-        self.val = float(args.pop(0))
-        self.vec = list(map(int, args))
-        self.problem = problem
+    def __init__(self, problem, vec):
+        Solution.__init__(self, problem)
+        self.vec = vec
 
     def __repr__(self):
-        return "Sol(%d,%d)" % (self.id, self.val)
+        return str(self.vec)
 
-    def get_id_of_vec(self, vec):
-        return next(x.id for x in self.problem.solutions if x.vec == vec)
+    def get_val(self):
+        if self.val is not None:
+            return self.val
+        self.val = self.problem.compute_val(self.vec)
+        return self.val
 
-    def get_voisins_ids(self):
-        ids = []
+    def get_voisins(self):
+        voisins = []
         for i in range(0, len(self.vec)):
             copy = self.vec.copy()
             tmp = copy[i]
             copy[i] = copy[(i+1) % len(self.vec)]
             copy[(i+1) % len(self.vec)] = tmp
-            ids.append(self.get_id_of_vec(copy))
-        return ids
+            voisins.append(SolutionTSP(self.problem, copy))
+        return voisins
 
-    def acceptable(self):
-        return True
+    def pyplot(self):
+        x = [0]+[v.x for v in self.vec]+[0]
+        y = [0]+[v.y for v in self.vec]+[0]
+
+        plt.plot(x, y)
+        plt.show()
 
 
 class Ville:
@@ -78,7 +94,17 @@ class Ville:
         self.y = y
 
     def __repr__(self):
-        return "Ville(%d,%d)" % (self.x, self.y)
+        return str(self.id)
 
     def distance_from(self, ville):
         return math.sqrt(math.pow(self.x-ville.x, 2) + math.pow(self.y-ville.y, 2))
+
+    def get_id_of_closest(self, villes):
+        minimum = math.inf
+        min_id = 0
+        for i in range(0, len(villes)):
+            d = self.distance_from(villes[i])
+            if d < minimum:
+                minimum = d
+                min_id = i
+        return min_id

@@ -1,0 +1,18 @@
+    def compute_all_solutions(self):
+        id_sol = 0
+        solutions = []
+        for sol in list(itertools.product([0, 1], repeat=self.n)):
+            single_sol = [id_sol, self.compute_valeur(list(sol))] + list(sol)
+            solutions.append(single_sol)
+            id_sol += 1
+        return solutions
+
+    def compute_all_solutions(self):
+        id_sol = 0
+        solutions = []
+        for sol in list(itertools.permutations(self.villes)):
+            single_sol = [id_sol, self.compute_valeur(
+                list(sol))] + [x.id for x in sol]
+            solutions.append(single_sol)
+            id_sol += 1
+        return solutions
